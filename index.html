@@ -1,39 +1,42 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>草履蟲模擬 - 完整版</title>
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      font-family: sans-serif;
+      margin: 0; padding: 0; overflow: hidden; font-family: sans-serif;
+      background: #111;
+      color: white;
     }
-    canvas {
-      display: block;
-    }
+    canvas { display: block; background: #222; }
     .controls {
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      background: #f0f0f0;
-      padding: 10px 0;
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
+      position: fixed; bottom: 0; width: 100%; background: #333;
+      padding: 10px 0; display: flex; justify-content: center; flex-wrap: wrap;
       z-index: 10;
     }
     .controls button {
-      margin: 6px;
-      padding: 15px 20px;
-      font-size: 16px;
-      border-radius: 6px;
+      margin: 6px; padding: 15px 20px; font-size: 16px; border-radius: 6px;
+      cursor: pointer;
+      border: none; background: #555; color: white;
+      transition: background 0.3s;
+    }
+    .controls button:hover { background: #777; }
+    #stats {
+      position: fixed; top: 5px; left: 5px; background: rgba(0,0,0,0.5);
+      padding: 8px 15px; border-radius: 8px; font-size: 14px;
+      user-select: none;
+      color: #ddd;
+      z-index: 20;
+      max-width: 300px;
+      line-height: 1.4;
     }
   </style>
 </head>
 <body>
 <canvas id="canvas"></canvas>
+
+<div id="stats"></div>
 
 <div class="controls">
   <button onclick="setLight(true)">有光</button>
@@ -41,17 +44,22 @@
   <button onclick="setSaltLevel(0)">鹽水 0%</button>
   <button onclick="setSaltLevel(0.5)">鹽水 0.5%</button>
   <button onclick="setSaltLevel(1)">鹽水 1%</button>
+  <button onclick="exportData()">匯出資料(JSON)</button>
 </div>
 
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const statsDiv = document.getElementById('stats');
 let width, height;
+
 let paramecia = [];
 let predators = [];
 let foodSources = [];
 let lightOn = true;
 let saltLevel = 0;
+let mousePos = { x: 0, y: 0 };
+let spawnMode = 'paramecium'; // 點擊新增模式：paramecium/predator/food
 
 function resize() {
   width = canvas.width = window.innerWidth;
@@ -69,24 +77,52 @@ class Paramecium {
     this.lifespan = 1500 + Math.random() * 500;
     this.vx = Math.random() * 2 - 1;
     this.vy = Math.random() * 2 - 1;
+    this.type = '草履蟲';
+    this.color = lightOn ? `rgb(${50 + this.energy*2}, ${200}, ${255})` : '#00FFAA';
   }
 
   update() {
     this.age += 1 + saltLevel * 0.5;
     this.energy -= 0.05 + saltLevel * 0.1;
 
-    // 向光移動（感光行為）
+    // 感光追蹤滑鼠光源
     if (lightOn) {
-      let dx = 0 - this.x;
-      let dy = 0 - this.y;
+      let dx = mousePos.x - this.x;
+      let dy = mousePos.y - this.y;
       let mag = Math.sqrt(dx * dx + dy * dy);
       if (mag > 1) {
-        this.vx += dx / mag * 0.02;
-        this.vy += dy / mag * 0.02;
+        this.vx += dx / mag * 0.05;
+        this.vy += dy / mag * 0.05;
       }
     } else {
+      // 無光隨機漂移
       this.vx += Math.random() * 0.2 - 0.1;
       this.vy += Math.random() * 0.2 - 0.1;
+    }
+
+    // 避開最近變形蟲（逃跑行為）
+    if (predators.length > 0) {
+      let closestPred = null;
+      let closestDist = Infinity;
+      for (let pred of predators) {
+        let dx = pred.x - this.x;
+        let dy = pred.y - this.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestPred = pred;
+        }
+      }
+      if (closestDist < 150) {
+        // 反方向加速逃跑
+        let dx = this.x - closestPred.x;
+        let dy = this.y - closestPred.y;
+        let mag = Math.sqrt(dx*dx + dy*dy);
+        if (mag > 0) {
+          this.vx += (dx/mag) * 0.3;
+          this.vy += (dy/mag) * 0.3;
+        }
+      }
     }
 
     // 鹽水影響移動速度
@@ -97,8 +133,10 @@ class Paramecium {
     this.x += this.vx;
     this.y += this.vy;
 
-    if (this.x < 0 || this.x > width) this.vx *= -1;
-    if (this.y < 0 || this.y > height) this.vy *= -1;
+    if (this.x < 0) { this.x = 0; this.vx *= -1; }
+    if (this.x > width) { this.x = width; this.vx *= -1; }
+    if (this.y < 0) { this.y = 0; this.vy *= -1; }
+    if (this.y > height) { this.y = height; this.vy *= -1; }
 
     // 吃食物
     for (let i = 0; i < foodSources.length; i++) {
@@ -114,15 +152,32 @@ class Paramecium {
   }
 
   draw() {
-    ctx.fillStyle = lightOn ? `rgb(${50 + this.energy*2}, ${200}, ${255})` : '#00FFAA';
+    this.color = lightOn ? `rgb(${50 + this.energy*2}, ${200}, ${255})` : '#00FFAA';
+
+    // 無光時草履蟲螢光效果
+    if (!lightOn) {
+      ctx.shadowColor = '#0ff';
+      ctx.shadowBlur = 15;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.fillStyle = this.color;
     ctx.beginPath();
     ctx.arc(this.x, this.y, 6, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.shadowBlur = 0;
 
     // 顯示能量數字
     ctx.fillStyle = lightOn ? 'black' : 'white';
     ctx.font = "12px sans-serif";
     ctx.fillText(Math.round(this.energy), this.x - 10, this.y - 10);
+
+    // 顯示種類名稱
+    ctx.fillStyle = lightOn ? 'black' : 'white';
+    ctx.font = "10px sans-serif";
+    ctx.fillText(this.type, this.x - 12, this.y + 20);
   }
 
   isDead() {
@@ -131,48 +186,83 @@ class Paramecium {
 }
 
 class Predator {
-  constructor() {
-    this.x = Math.random() * width;
-    this.y = Math.random() * height;
+  constructor(x = Math.random()*width, y = Math.random()*height) {
+    this.x = x;
+    this.y = y;
     this.energy = 100;
+    this.age = 0;
+    this.lifespan = 2000 + Math.random() * 1000;
+    this.vx = Math.random()*2 - 1;
+    this.vy = Math.random()*2 - 1;
+    this.type = '變形蟲';
+    this.color = 'red';
   }
 
   update() {
-    if (paramecia.length === 0) return;
+    this.age++;
+    this.energy -= 0.05;
 
-    // 找最近草履蟲
-    let target = null;
-    let minDist = Infinity;
-    for (let p of paramecia) {
-      let dx = this.x - p.x;
-      let dy = this.y - p.y;
-      let dist = dx*dx + dy*dy;
-      if (dist < minDist) {
-        minDist = dist;
-        target = p;
+    if (paramecia.length === 0) {
+      // 沒草履蟲時隨機移動
+      this.vx += Math.random() * 0.2 - 0.1;
+      this.vy += Math.random() * 0.2 - 0.1;
+    } else {
+      // 找最近草履蟲
+      let target = null;
+      let minDist = Infinity;
+      for (let p of paramecia) {
+        let dx = this.x - p.x;
+        let dy = this.y - p.y;
+        let dist = dx*dx + dy*dy;
+        if (dist < minDist) {
+          minDist = dist;
+          target = p;
+        }
+      }
+      if (target) {
+        let dx = target.x - this.x;
+        let dy = target.y - this.y;
+        let mag = Math.sqrt(dx*dx + dy*dy);
+        if (mag > 0) {
+          this.vx += dx / mag * 0.1;
+          this.vy += dy / mag * 0.1;
+        }
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // 吃掉草履蟲
+        if (mag < 10) {
+          this.energy = Math.min(this.energy + 50, 100);
+          const idx = paramecia.indexOf(target);
+          if (idx >= 0) paramecia.splice(idx, 1);
+        }
       }
     }
 
-    if (target) {
-      let dx = target.x - this.x;
-      let dy = target.y - this.y;
-      let mag = Math.sqrt(dx*dx + dy*dy);
-      this.x += dx / mag * 1.5;
-      this.y += dy / mag * 1.5;
-
-      // 吃掉草履蟲
-      if (mag < 10) {
-        this.energy = Math.min(this.energy + 50, 100);
-        paramecia.splice(paramecia.indexOf(target), 1);
-      }
-    }
+    // 限制在畫面內
+    if (this.x < 0) { this.x = 0; this.vx *= -1; }
+    if (this.x > width) { this.x = width; this.vx *= -1; }
+    if (this.y < 0) { this.y = 0; this.vy *= -1; }
+    if (this.y > height) { this.y = height; this.vy *= -1; }
   }
 
   draw() {
-    ctx.fillStyle = 'red';
+    ctx.fillStyle = this.color;
     ctx.beginPath();
     ctx.arc(this.x, this.y, 10, 0, Math.PI * 2);
     ctx.fill();
+
+    // 能量數字
+    ctx.fillStyle = 'white';
+    ctx.font = "12px sans-serif";
+    ctx.fillText(Math.round(this.energy), this.x - 10, this.y - 12);
+    // 類型文字
+    ctx.fillText(this.type, this.x - 15, this.y + 22);
+  }
+
+  isDead() {
+    return this.energy <= 0 || this.age > this.lifespan;
   }
 }
 
@@ -198,9 +288,72 @@ function setSaltLevel(level) {
 }
 
 function generateFood() {
-  if (Math.random() < 0.02) {
+  if (foodSources.length < 50 && Math.random() < 0.02) {
     foodSources.push(new Food(Math.random() * width, Math.random() * height));
   }
+}
+
+// 匯出目前生物資料 JSON
+function exportData() {
+  const data = {
+    paramecia: paramecia.map(p => ({
+      x: p.x, y: p.y, energy: p.energy, age: p.age, lifespan: p.lifespan
+    })),
+    predators: predators.map(pr => ({
+      x: pr.x, y: pr.y, energy: pr.energy, age: pr.age, lifespan: pr.lifespan
+    })),
+    foodSources: foodSources.map(f => ({x: f.x, y: f.y}))
+  };
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `simulation_data_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+canvas.addEventListener('mousemove', (e) => {
+  mousePos.x = e.clientX;
+  mousePos.y = e.clientY;
+});
+
+// 點擊新增生物
+canvas.addEventListener('click', (e) => {
+  const x = e.clientX;
+  const y = e.clientY;
+  if (spawnMode === 'paramecium') {
+    paramecia.push(new Paramecium(x, y));
+  } else if (spawnMode === 'predator') {
+    predators.push(new Predator(x, y));
+  } else if (spawnMode === 'food') {
+    foodSources.push(new Food(x, y));
+  }
+});
+
+// 切換點擊新增類型（這裡用鍵盤1,2,3切換）
+window.addEventListener('keydown', (e) => {
+  if (e.key === '1') spawnMode = 'paramecium';
+  else if (e.key === '2') spawnMode = 'predator';
+  else if (e.key === '3') spawnMode = 'food';
+});
+
+// 畫面顯示統計資訊
+function updateStats() {
+  const avgLifeParamecia = paramecia.length > 0 ? (paramecia.reduce((a,b) => a + b.age,0)/paramecia.length).toFixed(1) : 0;
+  const avgLifePredators = predators.length > 0 ? (predators.reduce((a,b) => a + b.age,0)/predators.length).toFixed(1) : 0;
+
+  statsDiv.innerHTML = `
+    草履蟲數量: ${paramecia.length} <br>
+    變形蟲數量: ${predators.length} <br>
+    食物數量: ${foodSources.length} <br>
+    草履蟲平均壽命: ${avgLifeParamecia} <br>
+    變形蟲平均壽命: ${avgLifePredators} <br>
+    <br>
+    點擊畫面新增生物 (1=草履蟲, 2=變形蟲, 3=食物)<br>
+    目前新增模式: ${spawnMode}
+  `;
 }
 
 function loop() {
@@ -212,7 +365,6 @@ function loop() {
   for (let i = paramecia.length - 1; i >= 0; i--) {
     const p = paramecia[i];
     p.update();
-    p.draw();
 
     // 繁殖
     if (p.energy > 90 && Math.random() < 0.002) {
@@ -222,17 +374,26 @@ function loop() {
 
     if (p.isDead()) {
       paramecia.splice(i, 1);
+    } else {
+      p.draw();
     }
   }
 
-  for (let predator of predators) {
-    predator.update();
-    predator.draw();
+  for (let i = predators.length - 1; i >= 0; i--) {
+    const pred = predators[i];
+    pred.update();
+    if (pred.isDead()) {
+      predators.splice(i, 1);
+    } else {
+      pred.draw();
+    }
   }
 
   for (let food of foodSources) {
     food.draw();
   }
+
+  updateStats();
 
   requestAnimationFrame(loop);
 }
@@ -243,6 +404,9 @@ for (let i = 0; i < 10; i++) {
 }
 for (let i = 0; i < 2; i++) {
   predators.push(new Predator());
+}
+for (let i = 0; i < 40; i++) {
+  foodSources.push(new Food(Math.random() * width, Math.random() * height));
 }
 
 loop();
