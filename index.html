@@ -4,12 +4,27 @@
   <meta charset="UTF-8" />
   <title>草履蟲模擬（JavaScript 版）</title>
   <style>
-    body { margin: 0; background: #fff; }
-    canvas { display: block; margin: auto; background: #000; }
+    body { margin: 0; background: #fff; text-align: center; font-family: sans-serif; }
+    canvas { background: #000; display: block; margin: 10px auto; }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <canvas id="canvas" width="800" height="600"></canvas>
+  <h1>草履蟲模擬實驗</h1>
+  <div>
+    <button onclick="setChemicalLevel(0)">0%</button>
+    <button onclick="setChemicalLevel(0.5)">0.5%</button>
+    <button onclick="setChemicalLevel(1)">1%</button>
+    <button onclick="setLight(true)">有光</button>
+    <button onclick="setLight(false)">無光</button>
+  </div>
+  <canvas id="canvas" width="1200" height="800"></canvas>
+
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -20,7 +35,17 @@
     const worldWidth = width / gridSize;
     const worldHeight = height / gridSize;
 
-    // 環境格子陣列：'empty', 'food', 'chemical'
+    let chemicalLevel = 0; // 預設化學濃度
+    let lightOn = false;   // 預設無光
+
+    function setChemicalLevel(level) {
+      chemicalLevel = level;
+    }
+
+    function setLight(state) {
+      lightOn = state;
+    }
+
     const world = [];
     for(let y=0; y<worldHeight; y++) {
       world[y] = [];
@@ -41,11 +66,14 @@
         this.speed = 1.5;
         this.size = 6;
       }
+
       senseEnvironment(radius=3){
         let vecFood = [0,0];
         let vecChemical = [0,0];
+        let vecLight = [0,0];
         let cx = Math.floor(this.x / gridSize);
         let cy = Math.floor(this.y / gridSize);
+
         for(let dy=-radius; dy<=radius; dy++){
           for(let dx=-radius; dx<=radius; dx++){
             let nx = cx+dx;
@@ -66,11 +94,23 @@
             }
           }
         }
-        let vx = vecFood[0] + vecChemical[0];
-        let vy = vecFood[1] + vecChemical[1];
+
+        // 趨光性向右（正趨光性）
+        if(lightOn){
+          let toLight = [(width - this.x), 0];
+          let distLight = Math.hypot(toLight[0], toLight[1]);
+          if(distLight !== 0){
+            vecLight[0] = (toLight[0] / distLight) * 0.5;
+            vecLight[1] = 0;
+          }
+        }
+
+        let vx = vecFood[0] + vecChemical[0] + vecLight[0];
+        let vy = vecFood[1] + vecChemical[1] + vecLight[1];
         if(vx === 0 && vy === 0) return null;
         return Math.atan2(vy,vx);
       }
+
       move(){
         let targetAngle = this.senseEnvironment();
         if(targetAngle === null){
@@ -78,12 +118,9 @@
         } else {
           let diff = ((targetAngle - this.angle + Math.PI) % (2*Math.PI)) - Math.PI;
           let maxTurn = Math.PI / 12;
-          if(Math.abs(diff) < maxTurn){
-            this.angle = targetAngle;
-          } else {
-            this.angle += diff > 0 ? maxTurn : -maxTurn;
-          }
+          this.angle += Math.abs(diff) < maxTurn ? diff : (diff > 0 ? maxTurn : -maxTurn);
         }
+
         let newX = this.x + Math.cos(this.angle)*this.speed;
         let newY = this.y + Math.sin(this.angle)*this.speed;
         if(newX >=0 && newX < width && newY >=0 && newY < height){
@@ -96,8 +133,10 @@
             this.angle += Math.PI/2;
           }
         }
-        this.energy -= 0.2;
+
+        this.energy -= 0.2 + chemicalLevel * 1.5;
       }
+
       eat(){
         let gridX = Math.floor(this.x/gridSize);
         let gridY = Math.floor(this.y/gridSize);
@@ -106,20 +145,21 @@
           world[gridY][gridX] = 'empty';
         }
       }
+
       isAlive(){
         return this.energy > 0;
       }
+
       draw(){
         let energyRatio = this.energy / 100;
         let r = 30 * energyRatio + 25;
         let g = 144 * energyRatio + 111;
-        let b = 255 * energyRatio + 0;
+        let b = 255 * energyRatio;
         ctx.fillStyle = `rgb(${r},${g},${b})`;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, 2*Math.PI);
         ctx.fill();
 
-        // Energy bar
         let barWidth = 20;
         let barHeight = 4;
         let barX = this.x - barWidth/2;
@@ -150,9 +190,9 @@
       for(let y=0; y<worldHeight; y++){
         for(let x=0; x<worldWidth; x++){
           if(world[y][x] === 'food'){
-            ctx.fillStyle = '#228B22'; // 森林綠
+            ctx.fillStyle = '#228B22';
           } else if(world[y][x] === 'chemical'){
-            ctx.fillStyle = '#B22222'; // 火磚紅
+            ctx.fillStyle = '#B22222';
           } else {
             continue;
           }
@@ -178,6 +218,7 @@
           p.draw();
         }
       }
+
       requestAnimationFrame(loop);
     }
 
