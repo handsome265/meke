@@ -4,52 +4,175 @@
   <meta charset="UTF-8" />
   <title>草履蟲模擬（JavaScript 版）</title>
   <style>
-    body { margin: 0; background: #fff; text-align: center; font-family: sans-serif; }
-    canvas { background: #000; display: block; margin: 10px auto; }
+    body {
+      margin: 0;
+      background: #fff;
+      text-align: center;
+      font-family: sans-serif;
+    }
+    canvas {
+      background: #000;
+      display: block;
+      margin: 10px auto;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0;
+    }
     button {
-      margin: 10px;
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 16px;
+      color: #333;
     }
   </style>
 </head>
 <body>
   <h1>草履蟲模擬實驗</h1>
-  <div>
-    <button onclick="setChemicalLevel(0)">0%</button>
-    <button onclick="setChemicalLevel(0.5)">0.5%</button>
-    <button onclick="setChemicalLevel(1)">1%</button>
-    <button onclick="setLight(true)">有光</button>
-    <button onclick="setLight(false)">無光</button>
+
+  <div class="controls">
+    <div>
+      <strong>鹽濃度：</strong>
+      <button onclick="setChemicalLevel(0)">0%</button>
+      <button onclick="setChemicalLevel(0.5)">0.5%</button>
+      <button onclick="setChemicalLevel(1)">1%</button>
+    </div>
+    <div>
+      <strong>光照狀態：</strong>
+      <button onclick="setLight(true)">有光</button>
+      <button onclick="setLight(false)">無光</button>
+    </div>
   </div>
+
+  <div class="status">
+    <span id="statusText">目前狀態：無光，鹽濃度 0%</span>
+  </div>
+
   <canvas id="canvas" width="1200" height="800"></canvas>
 
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-
     const width = canvas.width;
     const height = canvas.height;
     const gridSize = 10;
     const worldWidth = width / gridSize;
     const worldHeight = height / gridSize;
 
-    let chemicalLevel = 0; // 預設化學濃度
-    let lightOn = false;   // 預設無光
+    let chemicalLevel = 0;
+
+
+以下是**完整更新後的 HTML 程式碼**，包含：
+
+- 原本的功能（按鈕大小與風格保持不變）  
+- 增加分組排版（光照與鹽濃度按鈕）  
+- 加上目前狀態顯示區（會即時顯示「目前有光／無光、鹽濃度百分比」）
+
+---
+
+### ✅ 請完整貼上以下程式碼：
+
+```html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>草履蟲模擬（JavaScript 版）</title>
+  <style>
+    body {
+      margin: 0;
+      background: #fff;
+      text-align: center;
+      font-family: sans-serif;
+    }
+    canvas {
+      background: #000;
+      display: block;
+      margin: 10px auto;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin: 10px 0;
+    }
+    .control-group {
+      margin: 0 10px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .status {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>草履蟲模擬實驗</h1>
+
+  <div class="controls">
+    <div class="control-group">
+      <strong>鹽濃度：</strong><br />
+      <button onclick="setChemicalLevel(0)">0%</button>
+      <button onclick="setChemicalLevel(0.5)">0.5%</button>
+      <button onclick="setChemicalLevel(1)">1%</button>
+    </div>
+    <div class="control-group">
+      <strong>光照狀態：</strong><br />
+      <button onclick="setLight(true)">有光</button>
+      <button onclick="setLight(false)">無光</button>
+    </div>
+  </div>
+
+  <div class="status" id="statusText">目前狀態：無光，鹽濃度 0%</div>
+
+  <canvas id="canvas" width="1200" height="800"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const gridSize = 10;
+    const worldWidth = width / gridSize;
+    const worldHeight = height / gridSize;
+
+    let chemicalLevel = 0;
+    let lightOn = false;
+
+    const statusText = document.getElementById("statusText");
+
+    function updateStatusText() {
+      statusText.textContent = `目前狀態：${lightOn ? "有光" : "無光"}，鹽濃度 ${chemicalLevel * 100}%`;
+    }
 
     function setChemicalLevel(level) {
       chemicalLevel = level;
+      updateStatusText();
     }
 
     function setLight(state) {
       lightOn = state;
+      updateStatusText();
     }
 
     const world = [];
-    for(let y=0; y<worldHeight; y++) {
+    for (let y = 0; y < worldHeight; y++) {
       world[y] = [];
-      for(let x=0; x<worldWidth; x++) {
+      for (let x = 0; x < worldWidth; x++) {
         let rnd = Math.random();
         if (rnd < 0.25) world[y][x] = 'food';
         else if (rnd < 0.33) world[y][x] = 'chemical';
@@ -58,7 +181,7 @@
     }
 
     class Paramecium {
-      constructor(x,y){
+      constructor(x, y) {
         this.x = x;
         this.y = y;
         this.angle = Math.random() * 2 * Math.PI;
@@ -67,39 +190,38 @@
         this.size = 6;
       }
 
-      senseEnvironment(radius=3){
-        let vecFood = [0,0];
-        let vecChemical = [0,0];
-        let vecLight = [0,0];
+      senseEnvironment(radius = 3) {
+        let vecFood = [0, 0];
+        let vecChemical = [0, 0];
+        let vecLight = [0, 0];
         let cx = Math.floor(this.x / gridSize);
         let cy = Math.floor(this.y / gridSize);
 
-        for(let dy=-radius; dy<=radius; dy++){
-          for(let dx=-radius; dx<=radius; dx++){
-            let nx = cx+dx;
-            let ny = cy+dy;
-            if(nx<0 || nx>=worldWidth || ny<0 || ny>=worldHeight) continue;
-            let dist = Math.hypot(dx,dy);
-            if(dist === 0 || dist > radius) continue;
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            let nx = cx + dx;
+            let ny = cy + dy;
+            if (nx < 0 || nx >= worldWidth || ny < 0 || ny >= worldHeight) continue;
+            let dist = Math.hypot(dx, dy);
+            if (dist === 0 || dist > radius) continue;
             let cell = world[ny][nx];
-            let dir = [(nx-cx)/dist, (ny-cy)/dist];
-            if(cell === 'food'){
-              let influence = 1/dist;
-              vecFood[0] += dir[0]*influence;
-              vecFood[1] += dir[1]*influence;
-            } else if(cell === 'chemical'){
-              let influence = 1/dist;
-              vecChemical[0] -= dir[0]*influence;
-              vecChemical[1] -= dir[1]*influence;
+            let dir = [(nx - cx) / dist, (ny - cy) / dist];
+            if (cell === 'food') {
+              let influence = 1 / dist;
+              vecFood[0] += dir[0] * influence;
+              vecFood[1] += dir[1] * influence;
+            } else if (cell === 'chemical') {
+              let influence = 1 / dist;
+              vecChemical[0] -= dir[0] * influence;
+              vecChemical[1] -= dir[1] * influence;
             }
           }
         }
 
-        // 趨光性向右（正趨光性）
-        if(lightOn){
+        if (lightOn) {
           let toLight = [(width - this.x), 0];
           let distLight = Math.hypot(toLight[0], toLight[1]);
-          if(distLight !== 0){
+          if (distLight !== 0) {
             vecLight[0] = (toLight[0] / distLight) * 0.5;
             vecLight[1] = 0;
           }
@@ -107,62 +229,62 @@
 
         let vx = vecFood[0] + vecChemical[0] + vecLight[0];
         let vy = vecFood[1] + vecChemical[1] + vecLight[1];
-        if(vx === 0 && vy === 0) return null;
-        return Math.atan2(vy,vx);
+        if (vx === 0 && vy === 0) return null;
+        return Math.atan2(vy, vx);
       }
 
-      move(){
+      move() {
         let targetAngle = this.senseEnvironment();
-        if(targetAngle === null){
-          this.angle += (Math.random()-0.5) * Math.PI/4;
+        if (targetAngle === null) {
+          this.angle += (Math.random() - 0.5) * Math.PI / 4;
         } else {
-          let diff = ((targetAngle - this.angle + Math.PI) % (2*Math.PI)) - Math.PI;
+          let diff = ((targetAngle - this.angle + Math.PI) % (2 * Math.PI)) - Math.PI;
           let maxTurn = Math.PI / 12;
           this.angle += Math.abs(diff) < maxTurn ? diff : (diff > 0 ? maxTurn : -maxTurn);
         }
 
-        let newX = this.x + Math.cos(this.angle)*this.speed;
-        let newY = this.y + Math.sin(this.angle)*this.speed;
-        if(newX >=0 && newX < width && newY >=0 && newY < height){
-          let gridX = Math.floor(newX/gridSize);
-          let gridY = Math.floor(newY/gridSize);
-          if(world[gridY][gridX] !== 'chemical'){
+        let newX = this.x + Math.cos(this.angle) * this.speed;
+        let newY = this.y + Math.sin(this.angle) * this.speed;
+        if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+          let gridX = Math.floor(newX / gridSize);
+          let gridY = Math.floor(newY / gridSize);
+          if (world[gridY][gridX] !== 'chemical') {
             this.x = newX;
             this.y = newY;
           } else {
-            this.angle += Math.PI/2;
+            this.angle += Math.PI / 2;
           }
         }
 
         this.energy -= 0.2 + chemicalLevel * 1.5;
       }
 
-      eat(){
-        let gridX = Math.floor(this.x/gridSize);
-        let gridY = Math.floor(this.y/gridSize);
-        if(world[gridY][gridX] === 'food'){
+      eat() {
+        let gridX = Math.floor(this.x / gridSize);
+        let gridY = Math.floor(this.y / gridSize);
+        if (world[gridY][gridX] === 'food') {
           this.energy = Math.min(this.energy + 15, 100);
           world[gridY][gridX] = 'empty';
         }
       }
 
-      isAlive(){
+      isAlive() {
         return this.energy > 0;
       }
 
-      draw(){
+      draw() {
         let energyRatio = this.energy / 100;
         let r = 30 * energyRatio + 25;
         let g = 144 * energyRatio + 111;
         let b = 255 * energyRatio;
         ctx.fillStyle = `rgb(${r},${g},${b})`;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, 2*Math.PI);
+        ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
         ctx.fill();
 
         let barWidth = 20;
         let barHeight = 4;
-        let barX = this.x - barWidth/2;
+        let barX = this.x - barWidth / 2;
         let barY = this.y - this.size - 10;
         ctx.fillStyle = '#646464';
         ctx.fillRect(barX, barY, barWidth, barHeight);
@@ -172,48 +294,48 @@
     }
 
     let paramecia = [];
-    for(let i=0; i<30; i++){
-      paramecia.push(new Paramecium(Math.random()*width, Math.random()*height));
+    for (let i = 0; i < 30; i++) {
+      paramecia.push(new Paramecium(Math.random() * width, Math.random() * height));
     }
 
-    function regenerateFood(){
-      for(let i=0; i<5; i++){
-        let rx = Math.floor(Math.random()*worldWidth);
-        let ry = Math.floor(Math.random()*worldHeight);
-        if(world[ry][rx] === 'empty'){
+    function regenerateFood() {
+      for (let i = 0; i < 5; i++) {
+        let rx = Math.floor(Math.random() * worldWidth);
+        let ry = Math.floor(Math.random() * worldHeight);
+        if (world[ry][rx] === 'empty') {
           world[ry][rx] = 'food';
         }
       }
     }
 
-    function drawWorld(){
-      for(let y=0; y<worldHeight; y++){
-        for(let x=0; x<worldWidth; x++){
-          if(world[y][x] === 'food'){
+    function drawWorld() {
+      for (let y = 0; y < worldHeight; y++) {
+        for (let x = 0; x < worldWidth; x++) {
+          if (world[y][x] === 'food') {
             ctx.fillStyle = '#228B22';
-          } else if(world[y][x] === 'chemical'){
+          } else if (world[y][x] === 'chemical') {
             ctx.fillStyle = '#B22222';
           } else {
             continue;
           }
-          ctx.fillRect(x*gridSize, y*gridSize, gridSize, gridSize);
+          ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
         }
       }
     }
 
-    function loop(){
+    function loop() {
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0,0,width,height);
+      ctx.fillRect(0, 0, width, height);
 
       regenerateFood();
       drawWorld();
 
-      for(let i=paramecia.length-1; i>=0; i--){
+      for (let i = paramecia.length - 1; i >= 0; i--) {
         let p = paramecia[i];
         p.move();
         p.eat();
-        if(!p.isAlive()){
-          paramecia.splice(i,1);
+        if (!p.isAlive()) {
+          paramecia.splice(i, 1);
         } else {
           p.draw();
         }
@@ -222,6 +344,7 @@
       requestAnimationFrame(loop);
     }
 
+    updateStatusText();
     loop();
   </script>
 </body>
