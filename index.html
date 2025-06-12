@@ -45,8 +45,10 @@
     <div class="control-group">
       <strong>鹽濃度：</strong><br />
       <button onclick="setChemicalLevel(0)">0%</button>
-      <button onclick="setChemicalLevel(0.5)">0.5%</button>
-      <button onclick="setChemicalLevel(1)">1%</button>
+      <button onclick="setChemicalLevel(0.25)">25%</button>
+      <button onclick="setChemicalLevel(0.5)">50%</button>
+      <button onclick="setChemicalLevel(0.75)">75%</button>
+      <button onclick="setChemicalLevel(1)">100%</button>
     </div>
     <div class="control-group">
       <strong>光照狀態：</strong><br />
@@ -69,7 +71,7 @@
     const worldHeight = height / gridSize;
 
     let chemicalLevel = 0;
-    let lightOn = false;
+    let lightOn = false; // 目前光照狀態不影響行為
 
     const statusText = document.getElementById("statusText");
 
@@ -80,21 +82,32 @@
     function setChemicalLevel(level) {
       chemicalLevel = level;
       updateStatusText();
+      generateWorld(); // 每次鹽濃度改變時重生世界
     }
 
     function setLight(state) {
       lightOn = state;
       updateStatusText();
+      // 目前光照不影響行為，未來可擴充
     }
 
-    const world = [];
-    for (let y = 0; y < worldHeight; y++) {
-      world[y] = [];
-      for (let x = 0; x < worldWidth; x++) {
-        let rnd = Math.random();
-        if (rnd < 0.25) world[y][x] = 'food';
-        else if (rnd < 0.33) world[y][x] = 'chemical';
-        else world[y][x] = 'empty';
+    let world = [];
+
+    function generateWorld() {
+      world = [];
+      for (let y = 0; y < worldHeight; y++) {
+        world[y] = [];
+        for (let x = 0; x < worldWidth; x++) {
+          let rnd = Math.random();
+          if (rnd < 0.25) {
+            world[y][x] = 'food';
+          } else if (rnd < 0.25 + chemicalLevel * 0.3) { 
+            // chemical 機率依鹽濃度增加，最多約30%
+            world[y][x] = 'chemical';
+          } else {
+            world[y][x] = 'empty';
+          }
+        }
       }
     }
 
@@ -104,7 +117,7 @@
         this.y = y;
         this.angle = Math.random() * 2 * Math.PI;
         this.energy = 100;
-        this.speed = 1.2 + Math.random() * 0.4; // 草履蟲移動速度（實際上大約200-300 µm/s，相對模擬調整）
+        this.speed = 1.2 + Math.random() * 0.4;
         this.size = 6;
       }
 
@@ -144,7 +157,7 @@
       move() {
         let targetAngle = this.senseEnvironment();
         if (targetAngle === null) {
-          this.angle += (Math.random() - 0.5) * Math.PI / 3; // 增加隨機性（模仿擴散移動）
+          this.angle += (Math.random() - 0.5) * Math.PI / 3;
         } else {
           let diff = ((targetAngle - this.angle + Math.PI) % (2 * Math.PI)) - Math.PI;
           let maxTurn = Math.PI / 10;
@@ -164,7 +177,7 @@
           }
         }
 
-        this.energy -= 0.15 + chemicalLevel * 1.2; // 消耗能量與鹽濃度有關
+        this.energy -= 0.15 + chemicalLevel * 1.2;
       }
 
       eat() {
@@ -253,6 +266,7 @@
     }
 
     updateStatusText();
+    generateWorld();
     loop();
   </script>
 </body>
