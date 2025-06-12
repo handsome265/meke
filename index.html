@@ -67,11 +67,11 @@
     const width = canvas.width;
     const height = canvas.height;
     const gridSize = 10;
-    const worldWidth = width / gridSize;
-    const worldHeight = height / gridSize;
+    const worldWidth = Math.floor(width / gridSize);
+    const worldHeight = Math.floor(height / gridSize);
 
     let chemicalLevel = 0;
-    let lightOn = false; // 目前光照狀態不影響行為
+    let lightOn = false;
 
     const statusText = document.getElementById("statusText");
 
@@ -82,13 +82,12 @@
     function setChemicalLevel(level) {
       chemicalLevel = level;
       updateStatusText();
-      generateWorld(); // 每次鹽濃度改變時重生世界
+      generateWorld();
     }
 
     function setLight(state) {
       lightOn = state;
       updateStatusText();
-      // 目前光照不影響行為，未來可擴充
     }
 
     let world = [];
@@ -101,8 +100,7 @@
           let rnd = Math.random();
           if (rnd < 0.25) {
             world[y][x] = 'food';
-          } else if (rnd < 0.25 + chemicalLevel * 0.3) { 
-            // chemical 機率依鹽濃度增加，最多約30%
+          } else if (rnd < 0.25 + chemicalLevel * 0.3) {
             world[y][x] = 'chemical';
           } else {
             world[y][x] = 'empty';
