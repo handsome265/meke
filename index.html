@@ -2,89 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>草履蟲模擬（JavaScript 版）</title>
-  <style>
-    body {
-      margin: 0;
-      background: #fff;
-      text-align: center;
-      font-family: sans-serif;
-    }
-    canvas {
-      background: #000;
-      display: block;
-      margin: 10px auto;
-    }
-    .controls {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 10px 0;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .status {
-      margin-top: 10px;
-      font-size: 16px;
-      color: #333;
-    }
-  </style>
-</head>
-<body>
-  <h1>草履蟲模擬實驗</h1>
-
-  <div class="controls">
-    <div>
-      <strong>鹽濃度：</strong>
-      <button onclick="setChemicalLevel(0)">0%</button>
-      <button onclick="setChemicalLevel(0.5)">0.5%</button>
-      <button onclick="setChemicalLevel(1)">1%</button>
-    </div>
-    <div>
-      <strong>光照狀態：</strong>
-      <button onclick="setLight(true)">有光</button>
-      <button onclick="setLight(false)">無光</button>
-    </div>
-  </div>
-
-  <div class="status">
-    <span id="statusText">目前狀態：無光，鹽濃度 0%</span>
-  </div>
-
-  <canvas id="canvas" width="1200" height="800"></canvas>
-
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-    const gridSize = 10;
-    const worldWidth = width / gridSize;
-    const worldHeight = height / gridSize;
-
-    let chemicalLevel = 0;
-
-
-以下是**完整更新後的 HTML 程式碼**，包含：
-
-- 原本的功能（按鈕大小與風格保持不變）  
-- 增加分組排版（光照與鹽濃度按鈕）  
-- 加上目前狀態顯示區（會即時顯示「目前有光／無光、鹽濃度百分比」）
-
----
-
-### ✅ 請完整貼上以下程式碼：
-
-```html
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <title>草履蟲模擬（JavaScript 版）</title>
+  <title>草履蟲模擬（生物學修正版）</title>
   <style>
     body {
       margin: 0;
@@ -121,7 +39,7 @@
   </style>
 </head>
 <body>
-  <h1>草履蟲模擬實驗</h1>
+  <h1>草履蟲模擬實驗（符合生物行為）</h1>
 
   <div class="controls">
     <div class="control-group">
@@ -186,14 +104,13 @@
         this.y = y;
         this.angle = Math.random() * 2 * Math.PI;
         this.energy = 100;
-        this.speed = 1.5;
+        this.speed = 1.2 + Math.random() * 0.4; // 草履蟲移動速度（實際上大約200-300 µm/s，相對模擬調整）
         this.size = 6;
       }
 
       senseEnvironment(radius = 3) {
         let vecFood = [0, 0];
         let vecChemical = [0, 0];
-        let vecLight = [0, 0];
         let cx = Math.floor(this.x / gridSize);
         let cy = Math.floor(this.y / gridSize);
 
@@ -218,17 +135,8 @@
           }
         }
 
-        if (lightOn) {
-          let toLight = [(width - this.x), 0];
-          let distLight = Math.hypot(toLight[0], toLight[1]);
-          if (distLight !== 0) {
-            vecLight[0] = (toLight[0] / distLight) * 0.5;
-            vecLight[1] = 0;
-          }
-        }
-
-        let vx = vecFood[0] + vecChemical[0] + vecLight[0];
-        let vy = vecFood[1] + vecChemical[1] + vecLight[1];
+        let vx = vecFood[0] + vecChemical[0];
+        let vy = vecFood[1] + vecChemical[1];
         if (vx === 0 && vy === 0) return null;
         return Math.atan2(vy, vx);
       }
@@ -236,10 +144,10 @@
       move() {
         let targetAngle = this.senseEnvironment();
         if (targetAngle === null) {
-          this.angle += (Math.random() - 0.5) * Math.PI / 4;
+          this.angle += (Math.random() - 0.5) * Math.PI / 3; // 增加隨機性（模仿擴散移動）
         } else {
           let diff = ((targetAngle - this.angle + Math.PI) % (2 * Math.PI)) - Math.PI;
-          let maxTurn = Math.PI / 12;
+          let maxTurn = Math.PI / 10;
           this.angle += Math.abs(diff) < maxTurn ? diff : (diff > 0 ? maxTurn : -maxTurn);
         }
 
@@ -256,7 +164,7 @@
           }
         }
 
-        this.energy -= 0.2 + chemicalLevel * 1.5;
+        this.energy -= 0.15 + chemicalLevel * 1.2; // 消耗能量與鹽濃度有關
       }
 
       eat() {
